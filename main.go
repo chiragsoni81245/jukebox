@@ -2,13 +2,16 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
-	"database/sql"
-    _ "github.com/mattn/go-sqlite3"
+
+	"github.com/chiragsoni81245/jukebox/middlewares"
+	"github.com/chiragsoni81245/jukebox/routes"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func main() {
@@ -21,6 +24,17 @@ func main() {
         log.Fatal(err)
     }
     defer db.Close()
+
+    // Providing this database instance to all the requests into there context it self
+    // which they can access using `c.db` where `c` is *gin.Context
+    router.Use(middlewares.DBWrapper(db))    
+
+    v1 := router.Group("/v1")
+    {
+        albumRouter := v1.Group("/album")
+        routes.AttachAlbumRoutes(albumRouter)
+    }
+    
 
     var port string = os.Getenv("PORT")
     if len(port)==0 {
