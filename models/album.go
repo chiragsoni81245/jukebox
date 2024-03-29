@@ -3,7 +3,10 @@ package models
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
+
 	"github.com/chiragsoni81245/jukebox/utils"
 )
 
@@ -17,22 +20,44 @@ type Album struct {
     MusicianIds []uint  `json:"musicianIds"`
 }
 
-func checkMusicianIds(musicianIds []uint, db *sql.DB) error {
-    check_musician_ids_query := `
-        SELECT 
-            COUNT(*) = COUNT(DISTINCT id) AS all_ids_present 
-        FROM musicians 
-        WHERE id IN (?);
-    `
+func checkMusicianIds(musicianIds []uint, db *sql.DB, required bool) error {
+    if len(musicianIds)==0{
+        if required {
+            return errors.New("At least one musician id is required")
+        }else{
+            return nil
+        }
+    }
 
-    var isAllMusicianIdsCorrect bool
-    err := db.QueryRow(check_musician_ids_query, musicianIds).Scan(&isAllMusicianIdsCorrect) 
+    musician_ids_query := fmt.Sprintf(`
+        SELECT 
+            id 
+        FROM musicians 
+        WHERE id IN (%s);
+    `, strings.Repeat("?", len(musicianIds)))
+
+    var params []interface{}
+    for _, musician_id := range musicianIds {
+        params = append(params, musician_id)
+    }
+
+    musician_rows, err := db.Query(musician_ids_query, params...)
     if err != nil {
         return err
     }
 
-    if !isAllMusicianIdsCorrect {
-        return errors.New("Invalid musicianIds")
+    var existing_musician_ids map[uint]bool = make(map[uint]bool);
+    for musician_rows.Next() {
+        var musician_id uint
+        musician_rows.Scan(&musician_id)
+        existing_musician_ids[musician_id] = true
+        musician_rows.NextResultSet()
+    }
+
+    for _, musician_id := range musicianIds {
+        if !existing_musician_ids[musician_id] {
+            return errors.New(fmt.Sprintf("Musician id %v does not exists", musician_id))
+        }
     }
 
     return nil
@@ -50,7 +75,7 @@ func (album *Album) IsValid(db *sql.DB) error {
     }
 
     // Check if all the musician ids are present in database
-    err := checkMusicianIds(album.MusicianIds, db)
+    err := checkMusicianIds(album.MusicianIds, db, true)
     if err != nil {
         return err
     }
@@ -67,7 +92,7 @@ func (album *Album) IsValidForUpdate(db *sql.DB) error {
     }
 
     // Check if all the musician ids are present in database
-    err := checkMusicianIds(album.MusicianIds, db)
+    err := checkMusicianIds(album.MusicianIds, db, false)
     if err != nil {
         return err
     }
@@ -100,15 +125,15 @@ func (album *Album) InsertIntoDB(db *sql.DB) error {
         return err
     }
     
-    insert_album_musician_mapping_stmt, err := tx.Prepare("INSERT INTO album_musicians (album_id, musician_id) VALUES (?, ?)")
+    insert_album_musician_mapping_stmt, err := tx.Prepare("INSERT INTO album_musician (album_id, musician_id) VALUES (?, ?)")
     if err != nil {
         tx.Rollback()
-        panic(err)
+        return err
     }
     defer insert_album_musician_mapping_stmt.Close()
 
-    for _, id := range album.MusicianIds {
-        _, err := insert_album_musician_mapping_stmt.Exec(album.ID, id)
+    for _, musician_id := range album.MusicianIds {
+        _, err := insert_album_musician_mapping_stmt.Exec(album.ID, musician_id)
         if err != nil {
             tx.Rollback()
             return err
@@ -148,7 +173,7 @@ func (album *Album) UpdateIntoDB(db *sql.DB) error {
     var genre sql.NullString
     var description sql.NullString
     tx, err := db.Begin()
-    err = db.QueryRow(update_album_query, params...).Scan(
+    err = tx.QueryRow(update_album_query, params...).Scan(
         &album.ID,
         &album.Name,
         &album.ReleaseDate,
@@ -169,15 +194,35 @@ func (album *Album) UpdateIntoDB(db *sql.DB) error {
         return err
     }
     
-    update_album_musician_mapping_stmt, err := tx.Prepare("INSERT OR IGNORE INTO album_musicians (album_id, musician_id) VALUES (?, ?);")
+    // Delete Musician Ids which are not in current array
+    delete_musician_ids_query := fmt.Sprintf(`
+        DELETE FROM album_musician
+        WHERE 
+            album_id = (?) AND    
+            musician_id NOT IN (%s);
+    `, strings.Repeat("?", len(album.MusicianIds)))
+    
+    var delete_query_params []interface{} 
+    delete_query_params = append(delete_query_params, album.ID)
+    for _, musician_id := range album.MusicianIds {
+        delete_query_params = append(delete_query_params, musician_id)
+    }
+    _, err = tx.Query(delete_musician_ids_query, delete_query_params...)
     if err != nil {
         tx.Rollback()
-        panic(err)
+        return err
+    }
+    //-------------------------------------------------
+
+    update_album_musician_mapping_stmt, err := tx.Prepare("INSERT OR IGNORE INTO album_musician (album_id, musician_id) VALUES (?, ?);")
+    if err != nil {
+        tx.Rollback()
+        return err
     }
     defer update_album_musician_mapping_stmt.Close()
 
-    for _, id := range album.MusicianIds {
-        _, err := update_album_musician_mapping_stmt.Exec(album.ID, id)
+    for _, musician_id := range album.MusicianIds {
+        _, err := update_album_musician_mapping_stmt.Exec(album.ID, musician_id)
         if err != nil {
             tx.Rollback()
             return err
