@@ -29,3 +29,21 @@ about artists and music albums & also to add new music albums, artist details.
     ```bash
     go run .
     ```
+
+### Demo API Screenshots
+
+![demo](demo_images/album_1.png)
+![demo](demo_images/album_2.png)
+![demo](demo_images/musician_1.png)
+![demo](demo_images/musician_2.png)
+![demo](demo_images/musician_3.png)
+![demo](demo_images/musician_4.png)
+![demo](demo_images/musician_5.png)
+![demo](demo_images/album_3.png)
+![demo](demo_images/album_4.png)
+![demo](demo_images/album_5.png)
+![demo](demo_images/album_6.png)
+![demo](demo_images/album_7.png)
+![demo](demo_images/album_8.png)
+![demo](demo_images/album_9.png)
+![demo](demo_images/album_10.png)
