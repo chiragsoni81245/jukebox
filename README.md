@@ -36,6 +36,9 @@ about artists and music albums & also to add new music albums, artist details.
 
 ### Demo API Screenshots
 
+![demo](demo_images/cli_1.png)
+![demo](demo_images/cli_2.png)
+![demo](demo_images/cli_3.png)
 ![demo](demo_images/album_1.png)
 ![demo](demo_images/album_2.png)
 ![demo](demo_images/musician_1.png)
