@@ -9,5 +9,7 @@ import (
 func AttachAlbumRoutes(router *gin.RouterGroup) {
     router.POST("/", handlers.CreateAlbum)
     router.PUT("/", handlers.UpdateAlbum)
+    router.GET("/", handlers.GetAlbums)
+    router.GET("/:id/musicians", handlers.GetAlbumMusicians)
 }
 

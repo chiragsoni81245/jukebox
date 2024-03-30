@@ -99,7 +99,7 @@ func CreateMusician(c *gin.Context) {
 
     var musician models.Musician
     if err := c.BindJSON(&musician); err != nil {
-        c.JSON(500, gin.H{"error": err.Error()})
+        c.JSON(400, gin.H{"error": err.Error()})
         return
     }
     if err := musician.IsValid(); err != nil {
@@ -110,7 +110,8 @@ func CreateMusician(c *gin.Context) {
     err = musician.InsertIntoDB(db)
 
     if err != nil {
-        c.JSON(500, gin.H{"error": err.Error()})
+        log.Fatal(err)
+        c.JSON(500, gin.H{"error": "Something went wrong"})
         return 
     }
 
