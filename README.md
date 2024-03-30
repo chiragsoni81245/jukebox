@@ -29,6 +29,10 @@ about artists and music albums & also to add new music albums, artist details.
     ```bash
     go run .
     ```
+7. To run the existing test cases run this command
+    ```bash
+    cd tests && go test
+    ```
 
 ### Demo API Screenshots
 
