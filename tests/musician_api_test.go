@@ -63,3 +63,34 @@ func TestCreateMusician(t *testing.T) {
     assert.Equal(t, http.StatusOK, w.Code)
     assert.Equal(t, expectedResponse, string(responseData))
 }
+
+func TestUpdateMusician(t *testing.T) {
+    expectedResponse := `{"message":"Musician updated successfully"}`
+    router, db, Terminate, err := SetupRouter()
+    if err != nil {
+        t.Errorf("Error in db connection: %v", err)
+    }
+    defer Terminate() 
+
+    var musician_id uint
+    err = db.QueryRow(`INSERT INTO musicians(name, type) VALUES("Chirag", "Composer") RETURNING id;`).Scan(&musician_id)
+    if err != nil {
+        t.Errorf("Error in inserting the dummy entry for musician in musicians table in db")
+    }
+
+    musician := models.Musician{ID: musician_id, Name: "Kumar Sanu", Type: "Vocalist"}
+    json_payload, _ := json.Marshal(musician)
+    req, _ := http.NewRequest("PUT", "/v1/musicians/", bytes.NewBuffer(json_payload))
+    w := httptest.NewRecorder()
+
+    router.ServeHTTP(w, req)
+    
+    // Read response body
+    responseData, err := io.ReadAll(w.Body)
+    if err != nil {
+        t.Errorf("Error reading response body: %v", err)
+    }
+
+    assert.Equal(t, http.StatusOK, w.Code)
+    assert.Equal(t, expectedResponse, string(responseData))
+}
