@@ -1,27 +1,28 @@
-// main.go
-package main
+package tests
 
 import (
 	"database/sql"
-	"fmt"
-	"log"
-	"os"
+
 	"github.com/chiragsoni81245/jukebox/middlewares"
 	"github.com/chiragsoni81245/jukebox/routes"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/pressly/goose"
 )
 
-func SetupRouter(db_name string) (*gin.Engine, *sql.DB) {
+func SetupRouter() (*gin.Engine, *sql.DB, error) {
     router := gin.Default()
 
     // Database Setup
-    db, err := sql.Open("sqlite3", fmt.Sprintf("%s.db", db_name))
+    db, err := sql.Open("sqlite3", "file::memory:?cache=shared")
     if err != nil {
-        log.Fatal(err)
+        return nil, nil, err
     }
-    defer db.Close()
+    // Setup Migrations
+    err = goose.Up(db, "../migrations")
+    if err != nil {
+        return nil, nil, err
+    }
 
     // Providing this database instance to all the requests into there context it self
     // which they can access using `c.db` where `c` is *gin.Context
@@ -35,21 +36,6 @@ func SetupRouter(db_name string) (*gin.Engine, *sql.DB) {
         routes.AttachMusicianRoutes(musicianRouter)
     }
 
-    return router, db
-}
-
-func main() {
-    godotenv.Load(".env")
-    router, _ := SetupRouter("jukebox")
-
-    var port string = os.Getenv("PORT")
-    if len(port)==0 {
-        port = "8080"
-    }
-    var host string = os.Getenv("HOST")
-    if len(host)==0 {
-        host = "localhost"
-    }
-    router.Run(fmt.Sprintf("%s:%s", host, port))
+    return router, db, nil
 }
 
