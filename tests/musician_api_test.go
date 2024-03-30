@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/chiragsoni81245/jukebox/models"
@@ -16,15 +15,11 @@ import (
 
 func TestCreateMusicianNameValidation(t *testing.T) {
     expectedResponse := `{"error":"Invalid name, it should be at least of 3 characters"}`
-    router, db, err := SetupRouter()
+    router, _, Terminate, err := SetupRouter()
     if err != nil {
         t.Errorf("Error in db connection: %v", err)
     }
-    defer func(){
-        db.Close()
-        os.Remove("test.db")
-    }()
-
+    defer Terminate() 
 
     musician := models.Musician{Name: "C", Type: "Composer"}
     json_payload, _ := json.Marshal(musician)
@@ -43,17 +38,14 @@ func TestCreateMusicianNameValidation(t *testing.T) {
     assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
+
 func TestCreateMusician(t *testing.T) {
     expectedResponse := `{"id":1,"message":"Musician created successfully"}`
-    router, db, err := SetupRouter()
+    router, _, Terminate, err := SetupRouter()
     if err != nil {
         t.Errorf("Error in db connection: %v", err)
     }
-    defer func(){
-        db.Close()
-        os.Remove("test.db")
-    }()
-
+    defer Terminate() 
 
     musician := models.Musician{Name: "Kumar Sanu", Type: "Vocalist"}
     json_payload, _ := json.Marshal(musician)

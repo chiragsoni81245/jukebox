@@ -2,26 +2,36 @@ package tests
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
+	"os/exec"
 
 	"github.com/chiragsoni81245/jukebox/middlewares"
 	"github.com/chiragsoni81245/jukebox/routes"
 	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/pressly/goose"
 )
 
-func SetupRouter() (*gin.Engine, *sql.DB, error) {
+var DB_COUNTER int = 1;
+
+func SetupRouter() (*gin.Engine, *sql.DB, func(), error) {
     router := gin.Default()
 
-    // Database Setup
-    db, err := sql.Open("sqlite3", "file::memory:?cache=shared")
-    if err != nil {
-        return nil, nil, err
-    }
     // Setup Migrations
-    err = goose.Up(db, "../migrations")
+
+    db_name := fmt.Sprintf("test_%d.db", DB_COUNTER)
+    DB_COUNTER += 1
+    cmd := exec.Command("goose", "-dir", "../migrations", "sqlite3", db_name, "up")
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+    err := cmd.Run()
     if err != nil {
-        return nil, nil, err
+        return nil, nil, nil, err
+    }
+    // Database Setup
+    db, err := sql.Open("sqlite3", db_name)
+    if err != nil {
+        return nil, nil, nil, err
     }
 
     // Providing this database instance to all the requests into there context it self
@@ -36,6 +46,9 @@ func SetupRouter() (*gin.Engine, *sql.DB, error) {
         routes.AttachMusicianRoutes(musicianRouter)
     }
 
-    return router, db, nil
+    return router, db, func(){
+        db.Close()
+        os.Remove(db_name)
+    }, nil
 }
 
