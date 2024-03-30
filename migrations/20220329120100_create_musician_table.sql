@@ -2,7 +2,7 @@
 CREATE TABLE musicians (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    musician_type TEXT
+    type TEXT
 );
 
 -- +goose Down

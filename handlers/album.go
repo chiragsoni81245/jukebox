@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"database/sql"
+	"log"
 	"github.com/chiragsoni81245/jukebox/models"
 	"github.com/chiragsoni81245/jukebox/utils"
 	"github.com/gin-gonic/gin"
@@ -9,8 +11,9 @@ import (
 func CreateAlbum(c *gin.Context) {
     db, err := utils.GetDB(c) 
     if err != nil {
+        log.Fatal(err)
         c.JSON(500, gin.H{
-            "error": err.Error(),
+            "error": "Something went wrong",
         })
         return
     }
@@ -33,7 +36,7 @@ func CreateAlbum(c *gin.Context) {
     }
 
     c.JSON(200, gin.H{
-        "message": "Inserted album successfully!",
+        "message": "Album created successfully!",
         "id": album.ID,
     })
 }
@@ -41,8 +44,9 @@ func CreateAlbum(c *gin.Context) {
 func UpdateAlbum(c *gin.Context) {
     db, err := utils.GetDB(c) 
     if err != nil {
+        log.Fatal(err)
         c.JSON(500, gin.H{
-            "error": err.Error(),
+            "error": "Something went wrong",
         })
         return
     }
@@ -65,7 +69,12 @@ func UpdateAlbum(c *gin.Context) {
     err = album.UpdateIntoDB(db)
 
     if err != nil {
-        c.JSON(500, gin.H{"error": err.Error()})
+        if err == sql.ErrNoRows {
+            c.JSON(400, gin.H{"error": "Invalid album id"})
+        }else{
+            log.Fatal(err)
+            c.JSON(500, gin.H{"error": "Something went wrong!"})
+        }
         return 
     }
 

@@ -34,7 +34,7 @@ func checkMusicianIds(musicianIds []uint, db *sql.DB, required bool) error {
             id 
         FROM musicians 
         WHERE id IN (%s);
-    `, strings.Repeat("?", len(musicianIds)))
+    `, strings.Repeat("?,", len(musicianIds)-1)+"?")
 
     var params []interface{}
     for _, musician_id := range musicianIds {
@@ -51,7 +51,6 @@ func checkMusicianIds(musicianIds []uint, db *sql.DB, required bool) error {
         var musician_id uint
         musician_rows.Scan(&musician_id)
         existing_musician_ids[musician_id] = true
-        musician_rows.NextResultSet()
     }
 
     for _, musician_id := range musicianIds {
@@ -194,38 +193,41 @@ func (album *Album) UpdateIntoDB(db *sql.DB) error {
         return err
     }
     
-    // Delete Musician Ids which are not in current array
-    delete_musician_ids_query := fmt.Sprintf(`
+    if len(album.MusicianIds)>0 {
+        // Delete Musician Ids which are not in current array
+        delete_musician_ids_query := fmt.Sprintf(`
         DELETE FROM album_musician
         WHERE 
-            album_id = (?) AND    
-            musician_id NOT IN (%s);
-    `, strings.Repeat("?", len(album.MusicianIds)))
-    
-    var delete_query_params []interface{} 
-    delete_query_params = append(delete_query_params, album.ID)
-    for _, musician_id := range album.MusicianIds {
-        delete_query_params = append(delete_query_params, musician_id)
-    }
-    _, err = tx.Query(delete_musician_ids_query, delete_query_params...)
-    if err != nil {
-        tx.Rollback()
-        return err
-    }
-    //-------------------------------------------------
+        album_id = (?) AND    
+        musician_id NOT IN (%s);
+        `, strings.Repeat("?,", len(album.MusicianIds)-1)+"?" )
 
-    update_album_musician_mapping_stmt, err := tx.Prepare("INSERT OR IGNORE INTO album_musician (album_id, musician_id) VALUES (?, ?);")
-    if err != nil {
-        tx.Rollback()
-        return err
-    }
-    defer update_album_musician_mapping_stmt.Close()
+        var delete_query_params []interface{} 
+        delete_query_params = append(delete_query_params, album.ID)
+        for _, musician_id := range album.MusicianIds {
+            delete_query_params = append(delete_query_params, musician_id)
+        }
 
-    for _, musician_id := range album.MusicianIds {
-        _, err := update_album_musician_mapping_stmt.Exec(album.ID, musician_id)
+        _, err = tx.Exec(delete_musician_ids_query, delete_query_params...)
         if err != nil {
             tx.Rollback()
             return err
+        }
+
+        // Upsert New Musician Ids
+        update_album_musician_mapping_stmt, err := tx.Prepare("INSERT OR IGNORE INTO album_musician (album_id, musician_id) VALUES (?, ?);")
+        if err != nil {
+            tx.Rollback()
+            return err
+        }
+        defer update_album_musician_mapping_stmt.Close()
+
+        for _, musician_id := range album.MusicianIds {
+            _, err := update_album_musician_mapping_stmt.Exec(album.ID, musician_id)
+            if err != nil {
+                tx.Rollback()
+                return err
+            }
         }
     }
 

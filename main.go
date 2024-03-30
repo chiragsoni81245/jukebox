@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-
 	"github.com/chiragsoni81245/jukebox/middlewares"
 	"github.com/chiragsoni81245/jukebox/routes"
 	"github.com/gin-gonic/gin"
@@ -31,8 +30,10 @@ func main() {
 
     v1 := router.Group("/v1")
     {
-        albumRouter := v1.Group("/album")
+        albumRouter := v1.Group("/albums")
         routes.AttachAlbumRoutes(albumRouter)
+        musicianRouter := v1.Group("/musicians")
+        routes.AttachMusicianRoutes(musicianRouter)
     }
     
 
