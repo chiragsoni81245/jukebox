@@ -21,7 +21,6 @@ func SetupRouter(db_name string) (*gin.Engine, *sql.DB) {
     if err != nil {
         log.Fatal(err)
     }
-    defer db.Close()
 
     // Providing this database instance to all the requests into there context it self
     // which they can access using `c.db` where `c` is *gin.Context
@@ -40,7 +39,8 @@ func SetupRouter(db_name string) (*gin.Engine, *sql.DB) {
 
 func main() {
     godotenv.Load(".env")
-    router, _ := SetupRouter("jukebox")
+    router, db := SetupRouter("jukebox")
+    defer db.Close()
 
     var port string = os.Getenv("PORT")
     if len(port)==0 {
