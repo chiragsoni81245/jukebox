@@ -130,18 +130,19 @@ func CreateAlbum(c *gin.Context) {
 
     var album models.Album
     if err := c.BindJSON(&album); err != nil {
-        c.JSON(500, gin.H{"error": err.Error()})
+        c.JSON(400, gin.H{"error": err.Error()})
         return
     }
     if err := album.IsValid(db); err != nil {
-        c.JSON(500, gin.H{"error": err.Error()})
+        c.JSON(400, gin.H{"error": err.Error()})
         return 
     }
     
     err = album.InsertIntoDB(db)
 
     if err != nil {
-        c.JSON(500, gin.H{"error": err.Error()})
+        log.Fatal(err)
+        c.JSON(500, gin.H{"error": "Something went wrong"})
         return 
     }
 
@@ -163,11 +164,11 @@ func UpdateAlbum(c *gin.Context) {
 
     var album models.Album
     if err := c.BindJSON(&album); err != nil {
-        c.JSON(500, gin.H{"error": err.Error()})
+        c.JSON(400, gin.H{"error": err.Error()})
         return
     }
     if album.ID == 0 {
-        c.JSON(500, gin.H{"error": "Invalid album Id"})
+        c.JSON(400, gin.H{"error": "Invalid album Id"})
         return 
     }
 
